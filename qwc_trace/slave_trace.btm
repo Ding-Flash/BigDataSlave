@@ -1,0 +1,237 @@
+#########################
+#Application Instru Test#
+#########################
+
+RULE trace Application test
+CLASS com.hq.WordCount
+METHOD main
+AT ENTRY
+HELPER org.jboss.byteman.JMXBytemanHelper
+#BIND url = "service:jmx:rmi:///jndi/rmi:// + host + : + port + /jmxrmi";
+# serviceURL = new javax.management.remote.JMXServiceURL.JMXServiceURL(url)
+IF true
+DO
+#        import java.lang.management.*;
+#        import javax.management.*;
+#        import javax.management.remote.JMXServiceURL;
+#        import javax.management.remote.*;
+        
+#       String url = "service:jmx:rmi:///jndi/rmi://" + host + ":" + port + "/jmxrmi";
+#        JMXServiceURL serviceURL = new JMXServiceURL(url);
+#        JMXConnector conn = JMXConnectorFactory.connect(serviceURL);
+#        MBeanServerConnection mbs=conn.getMBeanServerConnection();
+
+
+#        MemoryMXBean memBean=ManagementFactory.newPlatformMXBeanProxy(mbs, ManagementFactory.MEMORY_MXBEAN_NAME, MemoryMXBean.class);
+
+#        OperatingSystemMXBean opMXbean = ManagementFactory.newPlatformMXBeanProxy(mbs, ManagementFactory.OPERATING_SYSTEM_MXBEAN_NAME, OperatingSystemMXBean.class);
+
+#        MemoryUsage heap = memBean.getHeapMemoryUsage();
+#        MemoryUsage nonHeap = memBean.getNonHeapMemoryUsage();
+#        long heapSizeUsed = heap.getUsed();
+#        long nonHeapSizeUsed = nonHeap.getUsed();
+#        long heapCommitedSize = heap.getCommitted();
+#        long nonHeapCommitedSize = nonHeap.getCommitted();
+
+Send2File("test");
+#System.out.println("test" + url);
+#traceln("BR:  Entering Application:main ");
+ENDRULE
+
+########################
+# Scheduler Instrument #
+########################
+ 
+RULE trace TaskScheduler creater entry
+CLASS org.apache.spark.SparkContext
+METHOD ^createTaskScheduler
+AT ENTRY
+IF true
+DO traceln("BR:Entering CreateTaskScheduler");
+ENDRULE
+
+
+RULE trace SparkSubmit.start
+CLASS org.apache.spark.deploy.SparkSubmit
+METHOD main
+AT ENTRY
+IF true
+DO traceOpen("org.apache.spark.deploy.SparkSubmit","/home/yangs/Bigdata/qwc_trace/tracelog");
+   traceln("org.apache.spark.deploy.SparkSubmit","BR:Entering Sparksubmit main. time:" + System.currentTimeMillis() + " thread id: " + Thread.currentThread().getId() + " name : " + Thread.currentThread().getName());
+   traceClose("org.apache.spark.deploy.SparkSubmit");
+ENDRULE
+
+RULE trace SparkSubmit.end
+CLASS org.apache.spark.deploy.SparkSubmit
+METHOD main
+AT EXIT
+IF true
+DO traceOpen("org.apache.spark.deploy.SparkSubmit","/home/yangs/Bigdata/qwc_trace/tracelog"); 
+   traceln("org.apache.spark.deploy.SparkSubmit","BR:Ending Sparksubmit main. time:" + System.currentTimeMillis() + " thread id: " + Thread.currentThread().getId() + " name : " + Thread.currentThread().getName());
+   traceClose("org.apache.spark.deploy.SparkSubmit");
+ENDRULE
+
+##########################
+#org.apache.spark.rdd.RDD#
+##########################
+
+RULE trace rdd persist enter
+CLASS org.apache.spark.rdd.RDD
+METHOD persist
+BIND Storagelevel = $1
+AT ENTRY
+IF true
+DO traceln(FILE,"BR: Entering persist. time:" + System.currentTimeMillis() + " thread id: " + Thread.currentThread().getId() + " name : " + Thread.currentThread().getName() + "Storagelevel = " + Storagelevel);
+ENDRULE
+
+RULE trace rdd persist exit
+CLASS org.apache.spark.rdd.RDD
+METHOD persist
+AT EXIT
+IF true
+DO traceln(FILE,"BR: Leaving persist. time:" + System.currentTimeMillis() + " thread id: " + Thread.currentThread().getId() + " name : " + Thread.currentThread().getName());
+ENDRULE
+
+RULE trace rdd cache enter
+CLASS org.apache.spark.rdd.RDD
+METHOD cache
+AT ENTRY
+IF true
+DO traceln("BR: Entering cache. time:" + System.currentTimeMillis() + " thread id: " + Thread.currentThread().getId() + " name : " + Thread.currentThread().getName());
+ENDRULE
+
+RULE trace rdd cache exit
+CLASS org.apache.spark.rdd.RDD
+METHOD cache
+AT EXIT
+IF true
+DO traceln("BR: Leaving cache. time:" + System.currentTimeMillis() + " thread id: " + Thread.currentThread().getId() + " name : " + Thread.currentThread().getName());
+ENDRULE
+
+RULE trace rdd flatmap enter
+CLASS org.apache.spark.rdd.RDD
+METHOD flatMap
+AT ENTRY
+IF true
+DO traceln("BR: Entering flatmap. time:" + System.currentTimeMillis() + " thread id: " + Thread.currentThread().getId() + " name : " + Thread.currentThread().getName());
+ENDRULE
+
+RULE trace rdd flatmap exit
+CLASS org.apache.spark.rdd.RDD
+METHOD flatMap
+AT EXIT
+IF true
+DO traceln("BR: Leaving flatmap. time:" + System.currentTimeMillis() + " thread id: " + Thread.currentThread().getId() + " name : " + Thread.currentThread().getName());
+ENDRULE
+
+RULE trace rdd collect enter
+CLASS org.apache.spark.rdd.RDD
+METHOD collect
+AT ENTRY
+IF true
+DO traceln("BR: Entering collect. time:" + System.currentTimeMillis() + " thread id: " + Thread.currentThread().getId() + " name : " + Thread.currentThread().getName());
+ENDRULE
+
+RULE trace rdd collect exit
+CLASS org.apache.spark.rdd.RDD
+METHOD collect
+AT EXIT
+IF true
+DO traceln("BR: Leaving collect. time:" + System.currentTimeMillis() + " thread id: " + Thread.currentThread().getId() + " name : " + Thread.currentThread().getName());
+traceClose(identifier);
+ENDRULE
+
+RULE iterator_test
+CLASS org.apache.spark.rdd.RDD
+METHOD iterator
+AT ENTRY
+IF true
+DO traceln("BR: An iterator thread id: " + Thread.currentThread().getId());
+ENDRULE
+
+
+##########################
+#          task          #
+##########################
+
+RULE Task
+CLASS Task
+METHOD run
+AT ENTRY
+IF true
+DO traceln("BR: find a task ");
+ENDRULE
+
+RULE RunTask
+CLASS ResultTask
+METHOD runTask
+AT ENTRY
+IF true
+DO traceOpen("ResultTask" + Thread.currentThread().getId(),"/home/yangs/Bigdata/qwc_trace/task_tracelog");
+   traceln("ResultTask"+Thread.currentThread().getId(),"BR: Starting a task id: " + Thread.currentThread().getId() + " time: " + System.currentTimeMillis    ());
+   traceClose("ResultTask" + Thread.currentThread().getId());
+ENDRULE
+
+RULE EndTask
+CLASS ResultTask
+METHOD runTask
+AT EXIT
+IF true
+DO traceOpen("ResultTask" + Thread.currentThread().getId(),"/home/yangs/Bigdata/qwc_trace/task_tracelog");
+   traceln("ResultTask"+Thread.currentThread().getId(),"BR: Ending a task id: " + Thread.currentThread().getId() + " time: " + System.currentTimeMillis    ());
+   traceClose("ResultTask" + Thread.currentThread().getId());
+ENDRULE
+
+#RULE RunShuffleTask
+#CLASS ShuffleMapTask
+#AT ENTRY
+#IF true
+#DO traceOpen("ShuffleTask" + Thread.currentThread().getId(),"/home/yangs/Bigdata/qwc_trace/task_tracelog");
+#   traceln("ShuffleTask"+Thread.currentThread().getId(),"BR: Starting a shuffle task id: " + Thread.currentThread().getId() + " time: " + System.currentTimeMillis    ());
+#   traceClose("ShuffleTask" + Thread.currentThread().getId());
+#ENDRULE
+
+#RULE EndShuffleTask
+#CLASS ShuffleMapTask
+#AT EXIT
+#IF true
+#DO traceOpen("ShuffleTask" + Thread.currentThread().getId(),"/home/yangs/Bigdata/qwc_trace/task_tracelog");
+#   traceln("ShuffleTask"+Thread.currentThread().getId(),"BR: Ending a shuffle task id: " + Thread.currentThread().getId() + " time: " + System.currentTimeMillis    ());
+#   traceClose("ShuffleTask" + Thread.currentThread().getId());
+#ENDRULE
+
+RULE test_iterator_func_1
+CLASS org.apache.spark.rdd.RDD
+METHOD getOrCompute
+AT ENTRY
+IF ture
+DO traceln("BR: cached RDD compute thread id: " + Thread.currentThread().getId());
+ENDRULE
+
+RULE test_iterator_func_2
+CLASS org.apache.spark.rdd.RDD
+METHOD computeOrReadCheckpoint
+AT ENTRY
+IF true
+DO traceln("BR: checkpointing RDD compute thread id: " + Thread.currentThread().getId());
+ENDRULE
+
+RULE test_iterator_func_3
+CLASS ^org.apache.spark.rdd.RDD
+METHOD compute
+AT ENTRY
+IF true
+DO traceOpen("^org.apache.spark.rdd.RDD"+Thread.currentThread().getId(),"/home/yangs/Bigdata/qwc_trace/tracelog");
+   traceln("^org.apache.spark.rdd.RDD"+Thread.currentThread().getId(),"BR: actural rdd computing thread id: " + Thread.currentThread().getId() + " time: " + System.currentTimeMillis() + " class: " + $0);
+   traceClose("^org.apache.spark.rdd.RDD"+Thread.currentThread().getId());
+ENDRULE
+
+RULE test_iterator_func_4
+CLASS ^org.apache.spark.rdd.RDD
+METHOD compute
+AT EXIT
+IF true
+DO  traceOpen("^org.apache.spark.rdd.RDD"+Thread.currentThread().getId(),"/home/yangs/Bigdata/qwc_trace/tracelog"); 
+    traceln("^org.apache.spark.rdd.RDD"+Thread.currentThread().getId(),"BR: actural rdd computing end thread id: " + Thread.currentThread().getId() + " time: " + System.currentTimeMillis() + " class: " + $0);
+    traceClose("^org.apache.spark.rdd.RDD"+Thread.currentThread().getId());
+ENDRULE
